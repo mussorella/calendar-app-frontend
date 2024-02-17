@@ -67,9 +67,6 @@ export const useAuthStore = () => {
 
     
 
-
-
-
     return {
         //* Propiedades
         errorMessage,
