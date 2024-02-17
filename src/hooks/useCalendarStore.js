@@ -1,30 +1,67 @@
 import { useDispatch, useSelector } from "react-redux"
-import { onAddNewEvent, onDeleteEvent, onSetActiveEvent, onUpdateEvent } from "../store"
+import { onAddNewEvent, onDeleteEvent, onLoadEvents, onSetActiveEvent, onUpdateEvent } from "../store"
+import { calendarApi } from "../api"
+import { convertEventsToDateEvents } from "../helpers"
+import Swal from "sweetalert2"
 
 export const useCalendarStore = () => {
     const { events,activeEvent }=useSelector(state=>state.calendar)
-
+    const { user }=useSelector(state=>state.auth)//tomo el user autenticado
     const dispatch=useDispatch()
+    
+    
     const setActiveEvent=(calendarEvent)=>{
         dispatch(onSetActiveEvent(calendarEvent))
     }
 
     const startSavingEvent= async(calendarEvent)=>{
-        //todo: llegar al backend
 
-        //TODO: bien
-        if(calendarEvent._id){
+        try {
+            //TODO: update event
+        if(calendarEvent.id){
             //actualizado
-            dispatch(onUpdateEvent({...calendarEvent}))
-        }else{
+
+            await calendarApi.put(`/events/${calendarEvent.id}`, calendarEvent);//con esto busco el id del calendario(es la peticion put del update events) y el backend loa ctualiza segun el user 
+            
+            dispatch(onUpdateEvent({...calendarEvent, user}));
+            return;
+        }
             //creando
-            dispatch(onAddNewEvent({...calendarEvent, _id: new Date().getTime()}))
+            const {data}= await calendarApi.post('/events', calendarEvent)
+            
+            dispatch(onAddNewEvent({...calendarEvent, id: data.evento.id, user}))
+        } catch (error) {
+            console.log(error)
+            Swal.fire('Error al guardar', error.response.data.msg, 'error')
+        }
+        
+    }
+    const startDeletingEvent=async()=>{
+    try {
+    //Todo: legar al backend
+    await calendarApi.delete(`/events/${activeEvent.id}`);
+    dispatch(onDeleteEvent())
+        } catch (error) {
+            console.log(error)
+            Swal.fire('Error al borrar', error.response.data.msg ('error'))
+    
+    }
+        
+    }
+     
+
+    const startLoadingEvents=async()=>{
+        try {
+            const {data}= await calendarApi.get('/events')
+            const events= convertEventsToDateEvents(data.eventos);
+            dispatch(onLoadEvents(events))//disparo el cargador de eventos, los procesa y carga loe veentos que transformamos en data events antes 
+            
+        } catch (error) {
+            console.log('Error al cargar los eventos')
+            console.log(error)
+            
         }
     }
-    const startDeletingEvent=()=>{
-        dispatch(onDeleteEvent())
-    }
-
     return {
     
     //propiedades
@@ -35,6 +72,7 @@ export const useCalendarStore = () => {
     startDeletingEvent,
     setActiveEvent,
     startSavingEvent,
+    startLoadingEvents,
 
     }
   }
